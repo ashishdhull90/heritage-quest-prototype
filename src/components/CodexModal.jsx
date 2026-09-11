@@ -385,7 +385,7 @@ export default function CodexModal({ isOpen, onClose, playerStats }) {
                 <div className="monument-codex-entry-card" style={{ marginTop: '1.5rem' }}>
                   <div className="monument-entry-hero-banner mehrangarh-codex-banner">
                     <img 
-                      src="/assets/monuments/mehrangarh-fort/mehrangarh-fort.jpg" 
+                      src="/assets/monuments/mehrangarh-fort/mehrangarh-home.jpg" 
                       alt="Mehrangarh Fort" 
                       className="monument-entry-bg-image" 
                       onError={(e) => { e.currentTarget.style.display = 'none'; }}

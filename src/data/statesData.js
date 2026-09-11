@@ -193,11 +193,11 @@ export const RAJASTHAN_STATE_DATA = {
       difficulty: 'Warrior Trial',
       estTime: '3 mins',
       shortDesc: 'A colossal fort rising 400 feet above the blue city of Jodhpur on sheer volcanic cliffs.',
-      heroImage: '/assets/monuments/mehrangarh-fort/mehrangarh-fort.jpg',
+      heroImage: '/assets/monuments/mehrangarh-fort/mehrangarh-home.jpg',
       gallery: [
         {
           id: 'panorama',
-          url: '/assets/monuments/mehrangarh-fort/mehrangarh-fort.jpg',
+          url: '/assets/monuments/mehrangarh-fort/mehrangarh-home.jpg',
           title: 'Mehrangarh Fort & Jodhpur',
           caption: 'Historic panoramic view of the 15th-century sandstone fortress towering on volcanic cliffs above the Blue City.'
         }

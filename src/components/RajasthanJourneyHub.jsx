@@ -115,7 +115,7 @@ export default function RajasthanJourneyHub({
       region: 'Marwar Region',
       era: '1459 CE (Rao Jodha)',
       shortDesc: 'Perched 400 feet above the blue city of Jodhpur on sheer volcanic cliffs.',
-      image: '/assets/monuments/mehrangarh-fort/mehrangarh-fort.jpg',
+      image: '/assets/monuments/mehrangarh-fort/mehrangarh-home.jpg',
       relicName: 'Mehrangarh Inscription Relic',
       features: ['1459 CE Foundation Inscription', 'Seven Defensive Gates (Jayapol)', 'Ranisar Stepwell Waterworks']
     },
@@ -350,7 +350,7 @@ export default function RajasthanJourneyHub({
                       className="destination-photo-img" 
                       onError={(e) => {
                         if (dest.id === 'mehrangarh-fort') {
-                          e.currentTarget.src = '/assets/monuments/mehrangarh-fort/mehrangarh-fort-panorama.jpg';
+                          e.currentTarget.src = '/assets/monuments/mehrangarh-fort/mehrangarh-home.jpg';
                         }
                       }}
                     />

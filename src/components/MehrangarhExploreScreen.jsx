@@ -9,9 +9,14 @@ import {
   Shield,
   Volume2,
   VolumeX,
-  ArrowRight
+  ArrowRight,
+  Compass,
+  DoorOpen,
+  Sun
 } from 'lucide-react';
 import { sound } from '../data/soundEffects';
+import JaiPolExploreScreen from './JaiPolExploreScreen';
+import SunCitadelExploreScreen from './SunCitadelExploreScreen';
 
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1600;
@@ -42,6 +47,12 @@ export default function MehrangarhExploreScreen({
     return isDone ? ['frag_foundation', 'frag_gates', 'frag_water'] : [];
   });
 
+  // Dedicated Jai Pol Interactive Exploration Screen State
+  const [showJaiPolExplore, setShowJaiPolExplore] = useState(false);
+
+  // Dedicated Sun Citadel Interactive Exploration Screen State
+  const [showSunCitadelExplore, setShowSunCitadelExplore] = useState(false);
+
   // Active Fragment Being Inspected
   const [activeInspectionFragment, setActiveInspectionFragment] = useState(null);
   const [nearbyFragment, setNearbyFragment] = useState(null);
@@ -71,8 +82,8 @@ export default function MehrangarhExploreScreen({
   const isInteractingModalOpen = useRef(false);
 
   useEffect(() => {
-    isInteractingModalOpen.current = !!(activeInspectionFragment || showIntroModal);
-  }, [activeInspectionFragment, showIntroModal]);
+    isInteractingModalOpen.current = !!(activeInspectionFragment || showIntroModal || showJaiPolExplore || showSunCitadelExplore);
+  }, [activeInspectionFragment, showIntroModal, showJaiPolExplore, showSunCitadelExplore]);
 
   // Audio Toggle
   const handleToggleSound = () => {
@@ -100,11 +111,17 @@ export default function MehrangarhExploreScreen({
 
       keysPressed.current[e.key.toLowerCase()] = true;
 
-      // E or Space to Interact with nearby fragment
+      // E or Space to Interact with nearby fragment (directly opens Sun Citadel or Jai Pol)
       if ((e.key === 'e' || e.key === 'E' || e.key === ' ') && nearbyFragment) {
         e.preventDefault();
         sound.playChime();
-        setActiveInspectionFragment(nearbyFragment);
+        if (nearbyFragment.id === 'frag_foundation') {
+          setShowSunCitadelExplore(true);
+        } else if (nearbyFragment.id === 'frag_gates') {
+          setShowJaiPolExplore(true);
+        } else {
+          setActiveInspectionFragment(nearbyFragment);
+        }
       }
     };
 
@@ -128,6 +145,20 @@ export default function MehrangarhExploreScreen({
   const handleJoystickEnd = () => {
     joystickVector.current = { x: 0, y: 0 };
   };
+
+  // Preloaded Environment Image Asset (Authentic Mehrangarh Home Visual)
+  const bgHomeImgRef = useRef(null);
+
+  useEffect(() => {
+    const img = new Image();
+    img.src = '/assets/monuments/mehrangarh-fort/mehrangarh-home.jpg';
+    img.onload = () => {
+      bgHomeImgRef.current = img;
+    };
+    if (img.complete) {
+      bgHomeImgRef.current = img;
+    }
+  }, []);
 
   // Main 60FPS Game Loop & Canvas Rendering
   useEffect(() => {
@@ -197,287 +228,39 @@ export default function MehrangarhExploreScreen({
       setNearbyFragment(foundNearby);
 
       // ===================================================================
-      // ===================================================================
-      // DRAW CANVAS SCENE: MEHRANGARH CITADEL & JODHPUR CLIFFS
+      // DRAW CANVAS SCENE: AUTHENTIC MEHRANGARH FORT PHOTOGRAPH
       // ===================================================================
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.save();
       ctx.translate(-camX, -camY);
 
-      // --- LAYER 1: DESERT SKY & CLIFFSIDE BLUE CITY HORIZON ---
-      // Volcanic Rock Base Ground
-      const terrainGrad = ctx.createLinearGradient(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-      terrainGrad.addColorStop(0, '#1c131a');
-      terrainGrad.addColorStop(0.4, '#2d181e');
-      terrainGrad.addColorStop(0.8, '#1e1424');
-      terrainGrad.addColorStop(1, '#0f172a');
-      ctx.fillStyle = terrainGrad;
+      // --- LAYER 1: AUTHENTIC MEHRANGARH FORT HOME / COURTYARD PHOTOGRAPH ---
+      if (bgHomeImgRef.current && bgHomeImgRef.current.complete) {
+        // Draw the full authentic Mehrangarh Fort photograph across the 2400x1600 world
+        ctx.drawImage(bgHomeImgRef.current, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+      } else {
+        // Sandstone fallback gradient while image is loading
+        const terrainGrad = ctx.createLinearGradient(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+        terrainGrad.addColorStop(0, '#1c131a');
+        terrainGrad.addColorStop(0.4, '#2d181e');
+        terrainGrad.addColorStop(0.8, '#1e1424');
+        terrainGrad.addColorStop(1, '#0f172a');
+        ctx.fillStyle = terrainGrad;
+        ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+      }
+
+      // Subtle atmospheric lighting & vignette so the photograph is prominent while UI is crisp
+      const envVignette = ctx.createRadialGradient(
+        WORLD_WIDTH / 2, WORLD_HEIGHT / 2, 400,
+        WORLD_WIDTH / 2, WORLD_HEIGHT / 2, 1400
+      );
+      envVignette.addColorStop(0, 'rgba(0, 0, 0, 0.04)');
+      envVignette.addColorStop(0.6, 'rgba(15, 10, 5, 0.18)');
+      envVignette.addColorStop(1, 'rgba(5, 5, 10, 0.55)');
+      ctx.fillStyle = envVignette;
       ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
-      // Blue City Precipice Vista (South-West drop-off)
-      const blueCityGradient = ctx.createLinearGradient(0, 1100, 800, 1600);
-      blueCityGradient.addColorStop(0, '#1e3a5f');
-      blueCityGradient.addColorStop(0.5, '#0c2340');
-      blueCityGradient.addColorStop(1, '#050f1a');
-      ctx.fillStyle = blueCityGradient;
-      ctx.fillRect(0, 1100, 1000, 500);
-
-      // Cliff Edge Rock Strata Fissures
-      ctx.strokeStyle = 'rgba(217, 119, 6, 0.25)';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(0, 1100);
-      ctx.lineTo(320, 1140);
-      ctx.lineTo(650, 1110);
-      ctx.lineTo(1000, 1200);
-      ctx.stroke();
-
-      // Jodhpur Indigo-Blue Traditional Houses below the cliff
-      for (let hx = 30; hx < 920; hx += 55) {
-        for (let hy = 1160; hy < 1550; hy += 48) {
-          const houseColor = (hx + hy) % 3 === 0 ? '#1e40af' : (hx + hy) % 2 === 0 ? '#0284c7' : '#0369a1';
-          ctx.fillStyle = houseColor;
-          ctx.fillRect(hx + (hy % 25), hy, 42, 32);
-          // Flat Roof & White Parapet Trim
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
-          ctx.fillRect(hx + (hy % 25), hy, 42, 4);
-          // Tiny Courtyard / Doorway
-          ctx.fillStyle = '#0f172a';
-          ctx.fillRect(hx + (hy % 25) + 16, hy + 14, 10, 14);
-        }
-      }
-
-      // --- LAYER 2: MASSIVE RED SANDSTONE FORTRESS WALLS & BASTIONS ---
-      // Primary Citadel Paved Terrace
-      const terraceGrad = ctx.createLinearGradient(200, 150, 2200, 1450);
-      terraceGrad.addColorStop(0, '#38221b');
-      terraceGrad.addColorStop(0.5, '#4a2c22');
-      terraceGrad.addColorStop(1, '#2f1a14');
-      ctx.fillStyle = terraceGrad;
-      ctx.fillRect(200, 150, 2000, 1300);
-
-      // Sandstone Paving Flagstones with realistic stone variation (no wireframe look)
-      for (let x = 200; x < 2200; x += 160) {
-        for (let y = 150; y < 1450; y += 120) {
-          const stoneHue = (x * 7 + y * 13) % 4;
-          ctx.fillStyle = stoneHue === 0 ? 'rgba(194, 89, 63, 0.12)' : stoneHue === 1 ? 'rgba(217, 119, 6, 0.08)' : 'rgba(0, 0, 0, 0.1)';
-          ctx.fillRect(x + 2, y + 2, 156, 116);
-          ctx.strokeStyle = 'rgba(230, 179, 37, 0.08)';
-          ctx.lineWidth = 1.5;
-          ctx.strokeRect(x + 2, y + 2, 156, 116);
-        }
-      }
-
-      // Massive High Rampart Walls with Cast Shadows
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-      ctx.fillRect(170, 120, 2080, 50); // Shadow top
-      ctx.fillRect(170, 1420, 2080, 60); // Shadow bottom
-
-      // Heavy Red Sandstone Outer Ramparts
-      ctx.fillStyle = '#6e3020';
-      ctx.fillRect(180, 120, 2040, 40); // Top wall
-      ctx.fillRect(180, 1420, 2040, 40); // Bottom wall
-      ctx.fillRect(180, 120, 40, 1340); // Left wall
-      ctx.fillRect(2180, 120, 40, 1340); // Right wall
-
-      // Crenellated Battlements (Merlons and Embrasures)
-      ctx.fillStyle = '#8f3e28';
-      for (let bx = 180; bx < 2220; bx += 40) {
-        ctx.fillRect(bx, 105, 24, 25);
-        ctx.fillRect(bx, 1445, 24, 25);
-      }
-      for (let by = 120; by < 1460; by += 40) {
-        ctx.fillRect(165, by, 25, 24);
-        ctx.fillRect(2205, by, 25, 24);
-      }
-
-      // Giant Corner Bastions with Chhatri Cupolas
-      const fortBastions = [
-        { x: 200, y: 140, name: 'Fatehpol Bastion' },
-        { x: 2200, y: 140, name: 'Jayapol Bastion' },
-        { x: 200, y: 1440, name: 'Loha Pol Bastion' },
-        { x: 2200, y: 1440, name: 'Suraj Pol Bastion' },
-        { x: 1200, y: 140, name: 'Khandar Batta Bastion' }
-      ];
-      fortBastions.forEach((b) => {
-        // Bastion Base Shadow
-        ctx.beginPath();
-        ctx.arc(b.x + 4, b.y + 4, 60, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-        ctx.fill();
-
-        // Bastion Body
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, 56, 0, Math.PI * 2);
-        ctx.fillStyle = '#7a3522';
-        ctx.fill();
-        ctx.strokeStyle = '#eab308';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-
-        // Inner Octagonal Chhatri Platform
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, 34, 0, Math.PI * 2);
-        ctx.fillStyle = '#99442e';
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(253, 224, 71, 0.6)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        // Central Dome Finial
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, 10, 0, Math.PI * 2);
-        ctx.fillStyle = '#eab308';
-        ctx.fill();
-      });
-
-      // --- LAYER 3: ROYAL PALACE WINGS (PHOOL MAHAL & MOTI MAHAL FACADES) ---
-      // Phool Mahal / Moti Mahal Palace Wing (North Plaza)
-      ctx.fillStyle = '#54261a';
-      ctx.fillRect(800, 200, 800, 180);
-      ctx.strokeStyle = 'rgba(234, 179, 8, 0.4)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(800, 200, 800, 180);
-
-      // Ornate Jharokha Balconies & Scalloped Arches along Palace Facade
-      for (let jx = 840; jx < 1560; jx += 90) {
-        // Balcony Base
-        ctx.fillStyle = '#78350f';
-        ctx.fillRect(jx, 220, 60, 50);
-        ctx.strokeStyle = '#eab308';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(jx, 220, 60, 50);
-        // Scalloped Arch Crest
-        ctx.beginPath();
-        ctx.arc(jx + 30, 220, 20, Math.PI, 0);
-        ctx.fillStyle = '#92400e';
-        ctx.fill();
-        ctx.stroke();
-        // Golden Jali Lattice Window
-        ctx.fillStyle = 'rgba(253, 224, 71, 0.3)';
-        ctx.fillRect(jx + 15, 235, 30, 25);
-      }
-      ctx.fillStyle = '#fde047';
-      ctx.font = 'bold 12px Outfit, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('MOTI MAHAL & PHOOL MAHAL PALACE WING', 1200, 340);
-
-      // --- LAYER 4: HISTORIC CORONATION PLAZA (SHRINGAR CHOWK) ---
-      // Royal Marble Throne & Mandala Court (1200, 850)
-      const chowkX = 1200;
-      const chowkY = 850;
-
-      // Outer Radial Mandala Inlay
-      ctx.beginPath();
-      ctx.arc(chowkX, chowkY, 140, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(234, 179, 8, 0.08)';
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(234, 179, 8, 0.6)';
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      // 8-Point Solar Star Pattern
-      ctx.strokeStyle = 'rgba(253, 224, 71, 0.4)';
-      ctx.lineWidth = 2;
-      for (let deg = 0; deg < 360; deg += 45) {
-        const rad = (deg * Math.PI) / 180;
-        ctx.beginPath();
-        ctx.moveTo(chowkX, chowkY);
-        ctx.lineTo(chowkX + 135 * Math.cos(rad), chowkY + 135 * Math.sin(rad));
-        ctx.stroke();
-      }
-
-      // Takhat-e-Rawat (Royal Coronation White Marble Throne Plinth)
-      ctx.fillStyle = 'rgba(241, 245, 249, 0.85)';
-      ctx.fillRect(chowkX - 55, chowkY - 55, 110, 110);
-      ctx.strokeStyle = '#eab308';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(chowkX - 55, chowkY - 55, 110, 110);
-
-      ctx.fillStyle = '#78350f';
-      ctx.font = 'bold 11px Outfit, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('SHRINGAR CHOWK', chowkX, chowkY - 8);
-      ctx.font = '9px Outfit, sans-serif';
-      ctx.fillStyle = '#b45309';
-      ctx.fillText('Rathore Throne Plinth', chowkX, chowkY + 12);
-
-      // --- LAYER 5: HISTORIC SIEGE CANNONS & BATTERY (KILKILA & BHAVANI) ---
-      const cannons = [
-        { x: 680, y: 180, label: 'Kilkila Cannon (1707 CE)' },
-        { x: 1720, y: 180, label: 'Bhavani Cannon (Brass Siege)' }
-      ];
-      cannons.forEach((c) => {
-        // Cannon Carriage Shadow
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.beginPath();
-        ctx.ellipse(c.x, c.y + 12, 34, 16, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Wooden Carriage Wheels
-        ctx.fillStyle = '#451a03';
-        ctx.fillRect(c.x - 22, c.y - 12, 44, 24);
-        ctx.strokeStyle = '#78350f';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(c.x - 22, c.y - 12, 44, 24);
-
-        // Heavy Cast Bronze Barrel
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(c.x - 7, c.y - 38, 14, 46);
-        ctx.strokeStyle = '#eab308';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(c.x - 7, c.y - 38, 14, 46);
-
-        // Pyramidal Cannonballs Stack
-        ctx.fillStyle = '#1e293b';
-        ctx.beginPath();
-        ctx.arc(c.x + 32, c.y, 6, 0, Math.PI * 2);
-        ctx.arc(c.x + 44, c.y, 6, 0, Math.PI * 2);
-        ctx.arc(c.x + 38, c.y - 8, 6, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Label
-        ctx.fillStyle = '#fde047';
-        ctx.font = 'bold 10px Outfit, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(c.label, c.x, c.y + 36);
-      });
-
-      // --- LAYER 6: RANISAR STEPWELL WATERWORKS (EAST WING) ---
-      const stepwellX = 1920;
-      const stepwellY = 1120;
-      // Stepwell Basin
-      ctx.fillStyle = '#0369a1';
-      ctx.fillRect(stepwellX - 90, stepwellY - 90, 180, 180);
-      ctx.strokeStyle = '#eab308';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(stepwellX - 90, stepwellY - 90, 180, 180);
-      // Stepped Stone Tiers
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(stepwellX - 70, stepwellY - 70, 140, 140);
-      ctx.strokeRect(stepwellX - 50, stepwellY - 50, 100, 100);
-      // Deep Pool
-      ctx.fillStyle = '#082f49';
-      ctx.fillRect(stepwellX - 30, stepwellY - 30, 60, 60);
-      ctx.fillStyle = '#7dd3fc';
-      ctx.font = 'bold 10px Outfit, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('RANISAR STEPWELL', stepwellX, stepwellY + 110);
-
-      // --- LAYER 7: BHAKURCHEERIA FOUNDATION CLIFF & JAYAPOL GATEWAY LABELS ---
-      const areaLabels = [
-        { text: '🏰 JAYAPOL VICTORY GATEWAY (1806 CE)', x: 1850, y: 310 },
-        { text: '⛰️ BHAKURCHEERIA HERMITAGE CLIFF (1459 CE)', x: 520, y: 320 },
-        { text: '⚔️ MARWAR WEAPONRY RAMPARTS', x: 500, y: 1280 }
-      ];
-      ctx.font = 'bold 11px Outfit, sans-serif';
-      ctx.fillStyle = 'rgba(253, 224, 71, 0.75)';
-      areaLabels.forEach((lbl) => {
-        ctx.fillText(lbl.text, lbl.x, lbl.y);
-      });
-
-      // --- LAYER 8: 3 ANCIENT MONOLITHIC INSCRIPTION STATIONS ---
+      // --- LAYER 2: 3 ANCIENT MONOLITHIC INSCRIPTION STATIONS ---
       (location.inscriptionFragments || []).forEach((frag, idx) => {
         const isDiscovered = discoveredIds.includes(frag.id);
         const isNear = nearbyFragment && nearbyFragment.id === frag.id;
@@ -613,60 +396,112 @@ export default function MehrangarhExploreScreen({
     setActiveInspectionFragment(null);
   };
 
+  // Complete Jai Pol Feature Exploration Callback
+  const handleCompleteJaiPol = ({ xpAward = 80 } = {}) => {
+    if (onClaimExplorationXP) {
+      onClaimExplorationXP(xpAward);
+    }
+    if (!discoveredIds.includes('frag_gates')) {
+      setDiscoveredIds(prev => [...prev, 'frag_gates']);
+    }
+  };
+
+  // Complete Sun Citadel Feature Exploration Callback
+  const handleCompleteSunCitadel = ({ xpAward = 80 } = {}) => {
+    if (onClaimExplorationXP) {
+      onClaimExplorationXP(xpAward);
+    }
+    if (!discoveredIds.includes('frag_foundation')) {
+      setDiscoveredIds(prev => [...prev, 'frag_foundation']);
+    }
+  };
+
   const fragmentsCount = discoveredIds.length;
   const isAllFragmentsFound = fragmentsCount === 3;
 
   return (
-    <div className="location-explore-screen mehrangarh-explore-screen" ref={containerRef}>
-      {/* 2D Canvas Viewport */}
-      <canvas ref={canvasRef} className="exploration-canvas" />
-
+    <div className="location-explore-screen mehrangarh-explore-screen">
       {/* =================================================================== */}
       {/* 1. TOP EXPLORATION HUD                                              */}
       {/* =================================================================== */}
-      <header className="exploration-top-hud">
-        <div className="hud-left-group">
-          <button 
-            className="btn-hud-back"
-            onClick={() => {
-              sound.playClick();
-              onReturnToMap();
-            }}
-            title="Return to Rajasthan Journey Hub"
-          >
-            &larr; Hub
-          </button>
-          <div className="hud-monument-identity">
-            <span className="hud-realm-badge">MARWAR &bull; JODHPUR</span>
-            <h1 className="hud-monument-title">MEHRANGARH FORT</h1>
+      <header className="location-top-hud">
+        <div className="hud-left-location">
+          <div className="hud-badge-crumbs">
+            <span>RAJASTHAN &bull; MARWAR (JODHPUR)</span>
+          </div>
+          <div className="hud-title-row">
+            <h1 className="hud-fort-name">MEHRANGARH FORT</h1>
+            <span className="hud-era-tag">1459 CE (Rao Jodha)</span>
           </div>
         </div>
 
-        <div className="hud-center-objective">
-          <div className="objective-box">
-            <span className="objective-label">QUEST: THE HIDDEN INSCRIPTION</span>
-            <strong className="objective-task">
-              {isAllFragmentsFound ? '✓ All 3 Fragments Found! Decode Inscription' : 'Find the 3 Inscription Fragments in the fort'}
-            </strong>
-          </div>
-          <div className="clues-counter-pill">
+        <div className="hud-center-mission-pill">
+          <div className="mission-title-row">
             <Scroll size={14} className="text-gold" />
-            <span>FRAGMENTS: {fragmentsCount}/3</span>
+            <span className="mission-label">
+              {isAllFragmentsFound ? '✓ ALL 3 FRAGMENTS DISCOVERED' : 'QUEST: THE HIDDEN INSCRIPTION'}
+            </span>
+          </div>
+          <div className="mission-progress-bar-wrap">
+            <div 
+              className="mission-progress-bar-fill"
+              style={{ width: `${(fragmentsCount / 3) * 100}%` }}
+            ></div>
+          </div>
+          <div className="mission-clues-counter">
+            <span>{isAllFragmentsFound ? 'Ready to Decode Chronicle' : 'Explore ramparts & courtyards'} &bull; <strong className="text-gold">FRAGMENTS: {fragmentsCount} / 3</strong></span>
           </div>
         </div>
 
-        <div className="hud-right-stats">
-          <div className="hud-stat-box" title="Explorer Lore Points">
-            <Sparkles size={16} className="text-gold" />
-            <span>{playerStats.xp} XP</span>
+        <div className="hud-right-stats-group">
+          <button 
+            className="btn-hud-round-action btn-monument-landmark-chip pulse-gold"
+            onClick={() => {
+              sound.playChime();
+              setShowSunCitadelExplore(true);
+            }}
+            title="Explore Sun Citadel (Rao Jodha Chamber)"
+            style={{
+              background: 'rgba(230, 179, 37, 0.18)',
+              border: '1px solid rgba(230, 179, 37, 0.45)',
+              color: 'var(--gold-light)'
+            }}
+          >
+            <Sun size={16} />
+            <span>Sun Citadel</span>
+          </button>
+
+          <button 
+            className="btn-hud-round-action btn-monument-landmark-chip pulse-gold"
+            onClick={() => {
+              sound.playChime();
+              setShowJaiPolExplore(true);
+            }}
+            title="Explore Jai Pol Victory Gateway"
+            style={{
+              background: 'rgba(230, 179, 37, 0.18)',
+              border: '1px solid rgba(230, 179, 37, 0.45)',
+              color: 'var(--gold-light)'
+            }}
+          >
+            <DoorOpen size={16} />
+            <span>Jai Pol</span>
+          </button>
+
+          <div className="hud-player-stats-chip">
+            <span className="stat-pill-item" title="Explorer Lore Points">
+              <Sparkles size={14} className="text-gold" />
+              <strong>{playerStats.xp} XP</strong>
+            </span>
+            <span className="stat-pill-item" title="Sacred Relics">
+              <Award size={14} className="text-emerald" />
+              <strong>{playerStats.unlockedRelics.length}/4</strong>
+            </span>
           </div>
-          <div className="hud-stat-box" title="Sacred Relics">
-            <Award size={16} className="text-emerald" />
-            <span>{playerStats.unlockedRelics.length}/4</span>
-          </div>
+
           {onOpenCodex && (
             <button 
-              className="btn-hud-codex"
+              className="btn-hud-round-action"
               onClick={() => {
                 sound.playClick();
                 onOpenCodex();
@@ -677,174 +512,259 @@ export default function MehrangarhExploreScreen({
               <span>Codex</span>
             </button>
           )}
+
           <button 
-            className="btn-hud-sound"
+            className="btn-hud-round-action"
             onClick={handleToggleSound}
             title={audioMuted ? "Unmute Audio" : "Mute Audio"}
             aria-label="Toggle Sound"
           >
             {audioMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
           </button>
+
+          <button 
+            className="btn-hud-round-action btn-return-map-chip"
+            onClick={() => {
+              sound.playClick();
+              onReturnToMap();
+            }}
+            title="Return to Rajasthan Journey Hub"
+          >
+            &larr; Hub
+          </button>
         </div>
       </header>
 
       {/* =================================================================== */}
-      {/* 2. ACHARYA VIKRAM GUIDE BAR                                         */}
+      {/* 2. 2D EXPLORATION VIEWPORT CANVAS WITH FOLLOW CAMERA                */}
       {/* =================================================================== */}
-      <div className="exploration-guide-bar">
-        <div className="guide-avatar-badge">
-          <img 
-            src="/assets/characters/acharya-vikram-portrait.jpg" 
-            alt="Acharya Vikram" 
-            className="guide-avatar-img-circle"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-            }}
-          />
-        </div>
-        <div className="guide-text-content">
-          <strong>Acharya Vikram:</strong>
-          <p>
-            {isAllFragmentsFound 
-              ? '“Excellent! All three inscription fragments are retrieved. Open the archeological decoder to reconstruct the founding chronicle of Rao Jodha!”' 
-              : nearbyFragment 
-                ? `“You are standing right beside ${nearbyFragment.shortTag}! Press E or tap Interact to inspect the weathered inscription.”` 
-                : '“Explore the high ramparts and stepwell terraces. The stone inscriptions of 1459 CE are scattered throughout these courtyards.”'}
-          </p>
-        </div>
-      </div>
-
-      {/* =================================================================== */}
-      {/* 3. PROXIMITY INTERACTION PROMPT                                     */}
-      {/* =================================================================== */}
-      {nearbyFragment && !activeInspectionFragment && (
-        <div className="proximity-interact-prompt animate-bounce">
-          <Hand size={18} className="text-gold" />
-          <div className="prompt-text">
-            <strong>INSCRIPTION FRAGMENT</strong>
-            <span>Press <strong>E</strong> or Tap to Inspect ({nearbyFragment.shortTag})</span>
-          </div>
-          <button 
-            className="btn-interact-action"
-            onClick={() => {
-              sound.playChime();
-              setActiveInspectionFragment(nearbyFragment);
-            }}
-          >
-            INTERACT
-          </button>
-        </div>
-      )}
-
-      {/* =================================================================== */}
-      {/* 4. FLOATING COLLECTION TOAST                                        */}
-      {/* =================================================================== */}
-      {collectionToast && (
-        <div className="floating-clue-toast animate-slide-in" role="status">
-          <Scroll size={22} className="text-gold" />
-          <div className="toast-content">
-            <strong>{collectionToast.title}</strong>
-            <p>{collectionToast.subtitle}</p>
-          </div>
-          <span className="toast-xp">+{collectionToast.xp} XP</span>
-        </div>
-      )}
-
-      {/* =================================================================== */}
-      {/* 5. QUEST COMPLETE CELEBRATION OVERLAY (2.5s AUTO-FADE)              */}
-      {/* =================================================================== */}
-      {showQuestCelebration && (
-        <div className="quest-celebration-overlay animate-fade-in" role="status">
-          <div className="celebration-card">
-            <div className="celebration-icon-frame pulse-gold">
-              <Scroll size={36} className="text-gold" />
-            </div>
-            <span className="celebration-pretitle">ARCHEOLOGICAL DISCOVERY</span>
-            <h2 className="celebration-title">ALL 3 FRAGMENTS GATHERED!</h2>
-            <p className="celebration-desc">
-              You have unearthed all inscription fragments in Mehrangarh Fort.
-            </p>
-            <div className="celebration-xp-pill">
-              <Sparkles size={16} />
-              <span>+75 Exploration XP Claimed</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* =================================================================== */}
-      {/* 6. READY TO DECODE ACTION DOCK                                      */}
-      {/* =================================================================== */}
-      {isAllFragmentsFound && (
-        <div className="restoration-ready-dock animate-fade-in">
-          <div className="ready-dock-content">
-            <div className="dock-icon">
-              <Scroll size={24} className="text-gold" />
-            </div>
-            <div className="dock-text">
-              <strong>DECODE THE INSCRIPTION UNLOCKED</strong>
-              <p>Reconstruct Rao Jodha’s 1459 CE chronicle to unlock the Mehrangarh Inscription Relic!</p>
-            </div>
-          </div>
-          <button 
-            className="btn-heritage-primary btn-large-cta pulse-gold"
-            onClick={() => {
-              sound.playFanfare();
-              onStartMiniGame();
-            }}
-            id="begin-decoder-btn"
-          >
-            <span>DECODE THE INSCRIPTION</span>
-            <ArrowRight size={18} />
-          </button>
-        </div>
-      )}
-
-      {/* =================================================================== */}
-      {/* 7. MOBILE VIRTUAL JOYSTICK & CONTROLS                               */}
-      {/* =================================================================== */}
-      <div className="mobile-touch-controls">
-        <div 
-          className="virtual-joystick-area"
-          onTouchStart={(e) => {
-            const touch = e.touches[0];
-            const rect = e.currentTarget.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            const dx = (touch.clientX - centerX) / (rect.width / 2);
-            const dy = (touch.clientY - centerY) / (rect.height / 2);
-            handleJoystickMove({ x: Math.max(-1, Math.min(1, dx)), y: Math.max(-1, Math.min(1, dy)) });
+      <div className="game-viewport-2d-frame" ref={containerRef}>
+        {/* Visual Fallback Image Layer (Cover) */}
+        <img 
+          src="/assets/monuments/mehrangarh-fort/mehrangarh-home.jpg"
+          alt="Mehrangarh Fort Home"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            pointerEvents: 'none',
+            zIndex: 0
           }}
-          onTouchMove={(e) => {
-            const touch = e.touches[0];
-            const rect = e.currentTarget.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            const dx = (touch.clientX - centerX) / (rect.width / 2);
-            const dy = (touch.clientY - centerY) / (rect.height / 2);
-            handleJoystickMove({ x: Math.max(-1, Math.min(1, dx)), y: Math.max(-1, Math.min(1, dy)) });
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
           }}
-          onTouchEnd={handleJoystickEnd}
-        >
-          <div className="joystick-knob"></div>
-        </div>
+        />
 
-        {nearbyFragment && (
-          <button 
-            className="mobile-interact-btn pulse-gold"
-            onClick={() => {
-              sound.playChime();
-              setActiveInspectionFragment(nearbyFragment);
-            }}
-          >
-            <Hand size={22} />
-            <span>INTERACT</span>
-          </button>
+        {/* 2D Canvas Viewport */}
+        <canvas ref={canvasRef} className="game-canvas-2d" style={{ position: 'relative', zIndex: 1 }} />
+
+        {/* Ambient Vignette & Decorative Corners */}
+        <div className="viewport-overlay-vignette" style={{ zIndex: 2 }}></div>
+        <div className="viewport-corner tl" style={{ zIndex: 3 }}></div>
+        <div className="viewport-corner tr" style={{ zIndex: 3 }}></div>
+        <div className="viewport-corner bl" style={{ zIndex: 3 }}></div>
+        <div className="viewport-corner br" style={{ zIndex: 3 }}></div>
+
+        {/* =================================================================== */}
+        {/* 3. PROXIMITY INTERACTION PROMPT                                     */}
+        {/* =================================================================== */}
+        {nearbyFragment && !activeInspectionFragment && (
+          <div className="proximity-interact-prompt animate-bounce" style={{ position: 'absolute', bottom: '80px', left: '50%', transform: 'translateX(-50%)', zIndex: 30 }}>
+            <Hand size={18} className="text-gold" />
+            <div className="prompt-text">
+              <strong>
+                {nearbyFragment.id === 'frag_foundation' 
+                  ? 'SUN CITADEL (RAO JODHA)' 
+                  : nearbyFragment.id === 'frag_gates' 
+                    ? 'JAI POL GATEWAY' 
+                    : 'INSCRIPTION FRAGMENT'}
+              </strong>
+              <span>
+                Press <strong>E</strong> or Tap to {
+                  nearbyFragment.id === 'frag_foundation' 
+                    ? 'Explore Sun Citadel' 
+                    : nearbyFragment.id === 'frag_gates' 
+                      ? 'Explore Jai Pol' 
+                      : 'Inspect'
+                } ({nearbyFragment.shortTag})
+              </span>
+            </div>
+            <button 
+              className="btn-interact-action"
+              onClick={() => {
+                sound.playChime();
+                if (nearbyFragment.id === 'frag_foundation') {
+                  setShowSunCitadelExplore(true);
+                } else if (nearbyFragment.id === 'frag_gates') {
+                  setShowJaiPolExplore(true);
+                } else {
+                  setActiveInspectionFragment(nearbyFragment);
+                }
+              }}
+            >
+              {(nearbyFragment.id === 'frag_foundation' || nearbyFragment.id === 'frag_gates') ? 'EXPLORE' : 'INTERACT'}
+            </button>
+          </div>
         )}
+
+        {/* =================================================================== */}
+        {/* 4. FLOATING COLLECTION TOAST                                        */}
+        {/* =================================================================== */}
+        {collectionToast && (
+          <div className="quest-collection-floating-toast" role="status" style={{ zIndex: 50 }}>
+            <div className="toast-crest-icon">
+              <Scroll size={22} className="text-gold" />
+            </div>
+            <div className="toast-text-wrap">
+              <span className="toast-headline">{collectionToast.title}</span>
+              <strong className="toast-clue-title">{collectionToast.subtitle}</strong>
+            </div>
+            <span className="toast-xp-pill">+{collectionToast.xp} XP</span>
+          </div>
+        )}
+
+        {/* =================================================================== */}
+        {/* 5. QUEST COMPLETE CELEBRATION OVERLAY (2.5s AUTO-FADE)              */}
+        {/* =================================================================== */}
+        {showQuestCelebration && (
+          <div className="quest-celebration-overlay animate-fade-in" role="status" style={{ position: 'absolute', inset: 0, zIndex: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(5, 8, 15, 0.85)' }}>
+            <div className="celebration-card">
+              <div className="celebration-icon-frame pulse-gold">
+                <Scroll size={36} className="text-gold" />
+              </div>
+              <span className="celebration-pretitle">ARCHEOLOGICAL DISCOVERY</span>
+              <h2 className="celebration-title">ALL 3 FRAGMENTS GATHERED!</h2>
+              <p className="celebration-desc">
+                You have unearthed all inscription fragments in Mehrangarh Fort.
+              </p>
+              <div className="celebration-xp-pill">
+                <Sparkles size={16} />
+                <span>+75 Exploration XP Claimed</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* =================================================================== */}
+        {/* 6. READY TO DECODE ACTION DOCK                                      */}
+        {/* =================================================================== */}
+        {isAllFragmentsFound && (
+          <div className="restoration-ready-dock animate-fade-in" style={{ position: 'absolute', bottom: '80px', right: '20px', zIndex: 25 }}>
+            <button 
+              className="btn-heritage-primary btn-large-cta pulse-gold"
+              onClick={() => {
+                sound.playFanfare();
+                if (onStartMiniGame) onStartMiniGame();
+              }}
+              id="begin-mehrangarh-restoration-btn"
+            >
+              <Sparkles size={20} />
+              <span>DECODE INSCRIPTION AT WORKBENCH</span>
+            </button>
+          </div>
+        )}
+
+        {/* =================================================================== */}
+        {/* 7. CONTROLS GUIDE OVERLAY CHIP                                      */}
+        {/* =================================================================== */}
+        <div className="keyboard-controls-hint-dock" style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 20 }}>
+          <div className="control-key-capsule">
+            <span className="key-cap">W</span>
+            <span className="key-cap">A</span>
+            <span className="key-cap">S</span>
+            <span className="key-cap">D</span>
+            <span className="hint-label">Move Rao Jodha</span>
+          </div>
+          <div className="control-key-capsule">
+            <span className="key-cap">E</span>
+            <span className="hint-label">Explore / Inspect</span>
+          </div>
+        </div>
+
+        {/* =================================================================== */}
+        {/* 7. DOCKED COMPANION GUIDE BAR (ACHARYA VIKRAM)                      */}
+        {/* =================================================================== */}
+        <div className="docked-companion-guide-bar">
+          <div className="guide-portrait-frame">
+            <img 
+              src="/assets/characters/acharya-vikram-portrait.jpg" 
+              alt="Acharya Vikram" 
+              className="vikram-portrait-svg"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          </div>
+          <div className="guide-speech-block">
+            <div className="guide-title-strip">
+              <strong>Acharya Vikram</strong>
+              <span className="guide-role-tag">&bull; Royal Chronicler</span>
+            </div>
+            <p className="guide-speech-text">
+              {isAllFragmentsFound 
+                ? '“Excellent! All three inscription fragments are retrieved. Open the archeological decoder to reconstruct the founding chronicle of Rao Jodha!”' 
+                : nearbyFragment 
+                  ? `“You are standing right beside ${nearbyFragment.shortTag}! Press E or tap Interact to inspect the weathered inscription.”` 
+                  : '“Explore the high ramparts and stepwell terraces. The stone inscriptions of 1459 CE are scattered throughout these courtyards.”'}
+            </p>
+          </div>
+        </div>
+
+        {/* =================================================================== */}
+        {/* 8. MOBILE VIRTUAL JOYSTICK & CONTROLS                               */}
+        {/* =================================================================== */}
+        <div className="mobile-touch-controls" style={{ position: 'absolute', bottom: '20px', left: '20px', zIndex: 30 }}>
+          <div 
+            className="virtual-joystick-area"
+            onTouchStart={(e) => {
+              const touch = e.touches[0];
+              const rect = e.currentTarget.getBoundingClientRect();
+              const centerX = rect.left + rect.width / 2;
+              const centerY = rect.top + rect.height / 2;
+              const dx = (touch.clientX - centerX) / (rect.width / 2);
+              const dy = (touch.clientY - centerY) / (rect.height / 2);
+              handleJoystickMove({ x: Math.max(-1, Math.min(1, dx)), y: Math.max(-1, Math.min(1, dy)) });
+            }}
+            onTouchMove={(e) => {
+              const touch = e.touches[0];
+              const rect = e.currentTarget.getBoundingClientRect();
+              const centerX = rect.left + rect.width / 2;
+              const centerY = rect.top + rect.height / 2;
+              const dx = (touch.clientX - centerX) / (rect.width / 2);
+              const dy = (touch.clientY - centerY) / (rect.height / 2);
+              handleJoystickMove({ x: Math.max(-1, Math.min(1, dx)), y: Math.max(-1, Math.min(1, dy)) });
+            }}
+            onTouchEnd={handleJoystickEnd}
+          >
+            <div className="joystick-knob"></div>
+          </div>
+
+          {nearbyFragment && (
+            <button 
+              className="mobile-interact-btn pulse-gold"
+              onClick={() => {
+                sound.playChime();
+                if (nearbyFragment.id === 'frag_foundation') {
+                  setShowSunCitadelExplore(true);
+                } else if (nearbyFragment.id === 'frag_gates') {
+                  setShowJaiPolExplore(true);
+                } else {
+                  setActiveInspectionFragment(nearbyFragment);
+                }
+              }}
+              style={{ position: 'absolute', bottom: '10px', right: '-120px' }}
+            >
+              <Hand size={22} />
+              <span>{(nearbyFragment.id === 'frag_foundation' || nearbyFragment.id === 'frag_gates') ? 'EXPLORE' : 'INTERACT'}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* =================================================================== */}
-      {/* 8. ACHARYA VIKRAM INTRO MODAL                                       */}
+      {/* 9. ACHARYA VIKRAM INTRO MODAL                                       */}
       {/* =================================================================== */}
       {showIntroModal && (
         <div className="modal-overlay" role="dialog" aria-modal="true">
@@ -860,11 +780,11 @@ export default function MehrangarhExploreScreen({
               {/* Featured Mehrangarh Fort Photography Banner */}
               <div className="inspection-featured-photo-frame" style={{ marginBottom: '1rem', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-gold)' }}>
                 <img 
-                  src="/assets/monuments/mehrangarh-fort/mehrangarh-fort.jpg" 
-                  alt="Mehrangarh Fort Jodhpur" 
+                  src="/assets/monuments/mehrangarh-fort/mehrangarh-home.jpg" 
+                  alt="Mehrangarh Fort Home" 
                   style={{ width: '100%', height: '160px', objectFit: 'cover', display: 'block' }}
                   onError={(e) => {
-                    e.currentTarget.src = '/assets/monuments/mehrangarh-fort/mehrangarh-fort-panorama.jpg';
+                    e.currentTarget.src = '/assets/monuments/mehrangarh-fort/mehrangarh-home.jpg';
                   }}
                 />
               </div>
@@ -912,7 +832,7 @@ export default function MehrangarhExploreScreen({
       )}
 
       {/* =================================================================== */}
-      {/* 9. ENVIRONMENTAL DISCOVERY INSPECTION MODAL                         */}
+      {/* 10. ENVIRONMENTAL DISCOVERY INSPECTION MODAL                        */}
       {/* =================================================================== */}
       {activeInspectionFragment && (
         <div className="modal-overlay" onClick={() => setActiveInspectionFragment(null)} role="dialog" aria-modal="true">
@@ -935,11 +855,11 @@ export default function MehrangarhExploreScreen({
               {/* Featured Mehrangarh Location Photo */}
               <div className="inspection-featured-photo-frame" style={{ marginBottom: '0.85rem', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-gold)' }}>
                 <img 
-                  src="/assets/monuments/mehrangarh-fort/mehrangarh-fort.jpg" 
+                  src="/assets/monuments/mehrangarh-fort/mehrangarh-home.jpg" 
                   alt={activeInspectionFragment.title} 
                   style={{ width: '100%', height: '140px', objectFit: 'cover', display: 'block' }}
                   onError={(e) => {
-                    e.currentTarget.src = '/assets/monuments/mehrangarh-fort/mehrangarh-fort-panorama.jpg';
+                    e.currentTarget.src = '/assets/monuments/mehrangarh-fort/mehrangarh-home.jpg';
                   }}
                 />
               </div>
@@ -982,23 +902,103 @@ export default function MehrangarhExploreScreen({
               </div>
             </div>
 
-            <div className="modal-footer">
-              <button 
-                className="btn-heritage-secondary"
-                onClick={() => setActiveInspectionFragment(null)}
-              >
-                Close
-              </button>
+            <div className="modal-footer" style={{ flexDirection: 'column', gap: '0.6rem' }}>
+              {activeInspectionFragment.id === 'frag_foundation' && (
+                <button
+                  className="btn-heritage-primary btn-large-cta pulse-gold"
+                  onClick={() => {
+                    sound.playChime();
+                    setActiveInspectionFragment(null);
+                    setShowSunCitadelExplore(true);
+                  }}
+                  style={{ width: '100%', marginBottom: '0.2rem' }}
+                >
+                  <Sun size={18} />
+                  <span>ENTER SUN CITADEL EXPLORATION</span>
+                </button>
+              )}
 
-              <button 
-                className="btn-heritage-primary btn-large-cta pulse-gold"
-                onClick={() => handleCollectFragment(activeInspectionFragment)}
-                id="collect-fragment-btn"
-              >
-                <Scroll size={18} />
-                <span>COLLECT FRAGMENT ({discoveredIds.includes(activeInspectionFragment.id) ? 'ALREADY SAVED' : 'SAVE TO CODEX'})</span>
-              </button>
+              {activeInspectionFragment.id === 'frag_gates' && (
+                <button
+                  className="btn-heritage-primary btn-large-cta pulse-gold"
+                  onClick={() => {
+                    sound.playChime();
+                    setActiveInspectionFragment(null);
+                    setShowJaiPolExplore(true);
+                  }}
+                  style={{ width: '100%', marginBottom: '0.2rem' }}
+                >
+                  <Compass size={18} />
+                  <span>ENTER JAI POL EXPLORATION</span>
+                </button>
+              )}
+
+              <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', gap: '0.75rem' }}>
+                <button 
+                  className="btn-heritage-secondary"
+                  onClick={() => setActiveInspectionFragment(null)}
+                >
+                  Close
+                </button>
+
+                <button 
+                  className="btn-heritage-primary btn-large-cta pulse-gold"
+                  onClick={() => handleCollectFragment(activeInspectionFragment)}
+                  id="collect-fragment-btn"
+                >
+                  <Scroll size={18} />
+                  <span>COLLECT FRAGMENT ({discoveredIds.includes(activeInspectionFragment.id) ? 'ALREADY SAVED' : 'SAVE TO CODEX'})</span>
+                </button>
+              </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* 11. DEDICATED JAI POL INTERACTIVE EXPLORATION SUB-SCREEN              */}
+      {/* ===================================================================== */}
+      {showJaiPolExplore && (
+        <div 
+          className="modal-overlay sheesh-fullscreen-modal-overlay" 
+          role="dialog" 
+          aria-modal="true" 
+          aria-label="Jai Pol Interactive Exploration"
+          style={{ zIndex: 120, padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <div style={{ width: '100%', maxWidth: '1240px', height: 'clamp(620px, 88vh, 800px)', padding: '0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
+            <JaiPolExploreScreen
+              location={location}
+              playerStats={playerStats}
+              onCompleteJaiPol={handleCompleteJaiPol}
+              onReturnToFort={() => setShowJaiPolExplore(false)}
+              onOpenCodex={onOpenCodex}
+              onClaimExplorationXP={onClaimExplorationXP}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* 12. DEDICATED SUN CITADEL INTERACTIVE EXPLORATION SUB-SCREEN           */}
+      {/* ===================================================================== */}
+      {showSunCitadelExplore && (
+        <div 
+          className="modal-overlay sheesh-fullscreen-modal-overlay" 
+          role="dialog" 
+          aria-modal="true" 
+          aria-label="Sun Citadel Interactive Exploration"
+          style={{ zIndex: 120, padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <div style={{ width: '100%', maxWidth: '1240px', height: 'clamp(620px, 88vh, 800px)', padding: '0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
+            <SunCitadelExploreScreen
+              location={location}
+              playerStats={playerStats}
+              onCompleteSunCitadel={handleCompleteSunCitadel}
+              onReturnToFort={() => setShowSunCitadelExplore(false)}
+              onOpenCodex={onOpenCodex}
+              onClaimExplorationXP={onClaimExplorationXP}
+            />
           </div>
         </div>
       )}
