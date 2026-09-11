@@ -6,14 +6,17 @@ import {
   Award, 
   CheckCircle2, 
   Compass, 
-  Camera,
-  Droplets,
-  Sun,
-  HelpCircle,
-  X,
+  Camera, 
+  Droplets, 
+  Sun, 
+  HelpCircle, 
+  X, 
   Hand
 } from 'lucide-react';
 import { sound } from '../data/soundEffects';
+import SheeshMahalExploreScreen from './SheeshMahalExploreScreen';
+import MaotaLakeExploreScreen from './MaotaLakeExploreScreen';
+import GaneshPolExploreScreen from './GaneshPolExploreScreen';
 
 /* 
   The 3 Heritage Discovery Clues in the 2D Amer Fort Game World:
@@ -92,6 +95,9 @@ export default function LocationExploreScreen({
     imgPanorama.onload = () => {
       bgPanoramaRef.current = imgPanorama;
     };
+    if (imgPanorama.complete) {
+      bgPanoramaRef.current = imgPanorama;
+    }
 
     // 2. Sheesh Mahal Interior Close-Up Photo
     const imgSheesh = new Image();
@@ -99,13 +105,31 @@ export default function LocationExploreScreen({
     imgSheesh.onload = () => {
       sheeshInteriorRef.current = imgSheesh;
     };
+    if (imgSheesh.complete) {
+      sheeshInteriorRef.current = imgSheesh;
+    }
   }, []);
 
   // Exploration Discovered Clues State
   const [discoveredIds, setDiscoveredIds] = useState(() => {
-    const isDone = playerStats.completedLocations?.includes(location.id) || playerStats.completedExplorations?.includes(location.id);
-    return isDone ? ['discovery_craft', 'discovery_mirror', 'discovery_water'] : [];
+    try {
+      const craftDone = localStorage.getItem('heritage_ganesh_pol_mastery_awarded') === 'true';
+      const mirrorDone = localStorage.getItem('heritage_sheesh_mahal_mastery_awarded') === 'true';
+      const waterDone = localStorage.getItem('heritage_maota_lake_mastery_awarded') === 'true';
+      const list = [];
+      if (craftDone) list.push('discovery_craft');
+      if (mirrorDone) list.push('discovery_mirror');
+      if (waterDone) list.push('discovery_water');
+      return list;
+    } catch {
+      return [];
+    }
   });
+
+  // Dedicated Sheesh Mahal, Maota Lake & Ganesh Pol Interactive Exploration Sub-Screen States
+  const [showSheeshMahalExplore, setShowSheeshMahalExplore] = useState(false);
+  const [showMaotaLakeExplore, setShowMaotaLakeExplore] = useState(false);
+  const [showGaneshPolExplore, setShowGaneshPolExplore] = useState(false);
 
   // Active Clue Being Inspected
   const [activeInspectionClue, setActiveInspectionClue] = useState(null);
@@ -194,8 +218,9 @@ export default function LocationExploreScreen({
   // Keyboard Event Listeners
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Don't capture when typing in inputs
+      // Don't capture when typing in inputs or when sub-screens are active
       if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+      if (showSheeshMahalExplore || showMaotaLakeExplore || showGaneshPolExplore) return;
 
       const k = e.key;
       const gs = gameStateRef.current;
@@ -214,7 +239,15 @@ export default function LocationExploreScreen({
         if (!gs.isPaused && nearbyClue) {
           e.preventDefault();
           sound.playChime();
-          setActiveInspectionClue(nearbyClue);
+          if (nearbyClue.type === 'mirror') {
+            setShowSheeshMahalExplore(true);
+          } else if (nearbyClue.type === 'water') {
+            setShowMaotaLakeExplore(true);
+          } else if (nearbyClue.type === 'craft') {
+            setShowGaneshPolExplore(true);
+          } else {
+            setActiveInspectionClue(nearbyClue);
+          }
         }
       }
     };
@@ -236,12 +269,110 @@ export default function LocationExploreScreen({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [nearbyClue]);
+  }, [nearbyClue, showSheeshMahalExplore, showMaotaLakeExplore, showGaneshPolExplore]);
 
-  // Pause movement when modal or temporary celebration is open
+  // Pause movement when modal or temporary celebration or sub-screen is open
   useEffect(() => {
-    gameStateRef.current.isPaused = !!(activeInspectionClue || showHelpModal || showCodexModal || showCompletionOverlay);
-  }, [activeInspectionClue, showHelpModal, showCodexModal, showCompletionOverlay]);
+    const gs = gameStateRef.current;
+    gs.isPaused = !!(activeInspectionClue || showHelpModal || showCodexModal || showCompletionOverlay || showSheeshMahalExplore || showMaotaLakeExplore || showGaneshPolExplore);
+    if (showSheeshMahalExplore || showMaotaLakeExplore || showGaneshPolExplore || activeInspectionClue || showHelpModal || showCodexModal) {
+      gs.keys.w = false;
+      gs.keys.a = false;
+      gs.keys.s = false;
+      gs.keys.d = false;
+      gs.keys.ArrowUp = false;
+      gs.keys.ArrowDown = false;
+      gs.keys.ArrowLeft = false;
+      gs.keys.ArrowRight = false;
+      gs.player.vx = 0;
+      gs.player.vy = 0;
+      gs.player.isMoving = false;
+    }
+  }, [activeInspectionClue, showHelpModal, showCodexModal, showCompletionOverlay, showSheeshMahalExplore, showMaotaLakeExplore, showGaneshPolExplore]);
+
+  // Complete Sheesh Mahal Interactive Exploration
+  const handleCompleteSheeshMahal = ({ xpAward = 80 } = {}) => {
+    sound.playSuccess();
+    if (!discoveredIds.includes('discovery_mirror')) {
+      const nextDiscovered = [...discoveredIds, 'discovery_mirror'];
+      setDiscoveredIds(nextDiscovered);
+      setTimeSinceLastClue(0);
+
+      // Trigger floating feedback toast
+      setCollectionToast({
+        title: 'Sheesh Mahal (Hall of Mirrors)',
+        xp: 25 + xpAward
+      });
+      setTimeout(() => setCollectionToast(null), 2500);
+
+      if (nextDiscovered.length === HERITAGE_CLUES.length) {
+        sound.playVictoryFanfare();
+        setShowCompletionOverlay(true);
+        if (onClaimExplorationXP) {
+          onClaimExplorationXP(75);
+        }
+        setTimeout(() => {
+          setShowCompletionOverlay(false);
+        }, 2800);
+      }
+    }
+  };
+
+  // Complete Maota Lake Interactive Exploration
+  const handleCompleteMaotaLake = ({ xpAward = 80 } = {}) => {
+    sound.playSuccess();
+    if (!discoveredIds.includes('discovery_water')) {
+      const nextDiscovered = [...discoveredIds, 'discovery_water'];
+      setDiscoveredIds(nextDiscovered);
+      setTimeSinceLastClue(0);
+
+      // Trigger floating feedback toast
+      setCollectionToast({
+        title: 'Maota Lake & Ramparts Waterworks',
+        xp: 25 + xpAward
+      });
+      setTimeout(() => setCollectionToast(null), 2500);
+
+      if (nextDiscovered.length === HERITAGE_CLUES.length) {
+        sound.playVictoryFanfare();
+        setShowCompletionOverlay(true);
+        if (onClaimExplorationXP) {
+          onClaimExplorationXP(75);
+        }
+        setTimeout(() => {
+          setShowCompletionOverlay(false);
+        }, 2800);
+      }
+    }
+  };
+
+  // Complete Ganesh Pol Interactive Exploration
+  const handleCompleteGaneshPol = ({ xpAward = 80 } = {}) => {
+    sound.playSuccess();
+    if (!discoveredIds.includes('discovery_craft')) {
+      const nextDiscovered = [...discoveredIds, 'discovery_craft'];
+      setDiscoveredIds(nextDiscovered);
+      setTimeSinceLastClue(0);
+
+      // Trigger floating feedback toast
+      setCollectionToast({
+        title: 'Ganesh Pol Gateway',
+        xp: 25 + xpAward
+      });
+      setTimeout(() => setCollectionToast(null), 2500);
+
+      if (nextDiscovered.length === HERITAGE_CLUES.length) {
+        sound.playVictoryFanfare();
+        setShowCompletionOverlay(true);
+        if (onClaimExplorationXP) {
+          onClaimExplorationXP(75);
+        }
+        setTimeout(() => {
+          setShowCompletionOverlay(false);
+        }, 2800);
+      }
+    }
+  };
 
   // Collect Clue Action
   const handleCollectClue = (clueId) => {
@@ -307,6 +438,10 @@ export default function LocationExploreScreen({
 
       const player = gs.player;
       const camera = gs.camera;
+
+      if (canvas.width === 0 || canvas.height === 0) {
+        updateCanvasDimensions();
+      }
 
       // -------------------------------------------------------------
       // 1. UPDATE PLAYER PHYSICS & MOVEMENT (IF NOT PAUSED)
@@ -628,7 +763,10 @@ export default function LocationExploreScreen({
           ctx.fillStyle = 'rgba(10, 14, 24, 0.95)';
           ctx.strokeStyle = '#e6b325';
           ctx.lineWidth = 1.5;
-          const promptW = 190;
+          const isMirror = clue.type === 'mirror';
+          const isWater = clue.type === 'water';
+          const isCraft = clue.type === 'craft';
+          const promptW = isMirror ? 240 : isWater ? 230 : isCraft ? 230 : 190;
           const promptH = 34;
           const promptX = clue.x - promptW / 2;
           const promptY = clue.y - 68;
@@ -640,7 +778,14 @@ export default function LocationExploreScreen({
 
           ctx.fillStyle = '#fde047';
           ctx.font = 'bold 12px sans-serif';
-          ctx.fillText(isTouchDevice ? 'Tap INTERACT below' : '[E] Investigate Clue', clue.x, promptY + 17);
+          const actionText = isMirror
+            ? (isTouchDevice ? 'Tap INTERACT for 3D Exploration' : '[E] Explore Sheesh Mahal (3D)')
+            : isWater
+              ? (isTouchDevice ? 'Tap INTERACT for 3D Exploration' : '[E] Explore Maota Lake (3D)')
+              : isCraft
+                ? (isTouchDevice ? 'Tap INTERACT for 3D Exploration' : '[E] Explore Ganesh Pol (3D)')
+                : (isTouchDevice ? 'Tap INTERACT below' : '[E] Investigate Clue');
+          ctx.fillText(actionText, clue.x, promptY + 17);
         }
       });
 
@@ -728,7 +873,7 @@ export default function LocationExploreScreen({
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', updateCanvasDimensions);
     };
-  }, [discoveredIds, nearbyClue, joystickVector, isTouchDevice]);
+  }, [discoveredIds, nearbyClue, joystickVector, isTouchDevice, showSheeshMahalExplore, showMaotaLakeExplore, showGaneshPolExplore]);
 
   // Touch Virtual Joystick Handlers
   const handleJoystickTouchStart = (e) => {
@@ -1021,7 +1166,15 @@ export default function LocationExploreScreen({
             onClick={() => {
               if (nearbyClue) {
                 sound.playChime();
-                setActiveInspectionClue(nearbyClue);
+                if (nearbyClue.type === 'mirror') {
+                  setShowSheeshMahalExplore(true);
+                } else if (nearbyClue.type === 'water') {
+                  setShowMaotaLakeExplore(true);
+                } else if (nearbyClue.type === 'craft') {
+                  setShowGaneshPolExplore(true);
+                } else {
+                  setActiveInspectionClue(nearbyClue);
+                }
               }
             }}
             disabled={!nearbyClue}
@@ -1139,17 +1292,14 @@ export default function LocationExploreScreen({
                   src={
                     activeInspectionClue.type === 'mirror'
                       ? '/assets/monuments/amer-fort/sheesh-mahal-interior.jpg'
-                      : '/assets/monuments/amer-fort/amer-fort-panorama.jpg'
+                      : activeInspectionClue.type === 'water'
+                        ? '/assets/monuments/amer-fort/maota-lake.jpg'
+                        : '/assets/monuments/amer-fort/ganesh-pol.jpg'
                   } 
                   alt={activeInspectionClue.title} 
                   className="inspection-featured-photo"
                   style={{
-                    objectPosition: 
-                      activeInspectionClue.type === 'mirror'
-                        ? 'center center'
-                        : activeInspectionClue.type === 'craft'
-                          ? '22% 35%'
-                          : '80% 75%'
+                    objectPosition: 'center center'
                   }}
                 />
                 <div className="photo-caption-bar">
@@ -1202,8 +1352,53 @@ export default function LocationExploreScreen({
             </div>
 
             <div className="inspection-modal-actions">
+              {activeInspectionClue.type === 'mirror' && (
+                <button
+                  className="btn-heritage-primary btn-large-cta pulse-gold"
+                  onClick={() => {
+                    sound.playChime();
+                    setActiveInspectionClue(null);
+                    setShowSheeshMahalExplore(true);
+                  }}
+                  style={{ marginBottom: '0.6rem' }}
+                >
+                  <Compass size={18} />
+                  <span>ENTER 3D SHEESH MAHAL EXPLORATION</span>
+                </button>
+              )}
+
+              {activeInspectionClue.type === 'water' && (
+                <button
+                  className="btn-heritage-primary btn-large-cta pulse-gold"
+                  onClick={() => {
+                    sound.playChime();
+                    setActiveInspectionClue(null);
+                    setShowMaotaLakeExplore(true);
+                  }}
+                  style={{ marginBottom: '0.6rem' }}
+                >
+                  <Compass size={18} />
+                  <span>ENTER 3D MAOTA LAKE EXPLORATION</span>
+                </button>
+              )}
+
+              {activeInspectionClue.type === 'craft' && (
+                <button
+                  className="btn-heritage-primary btn-large-cta pulse-gold"
+                  onClick={() => {
+                    sound.playChime();
+                    setActiveInspectionClue(null);
+                    setShowGaneshPolExplore(true);
+                  }}
+                  style={{ marginBottom: '0.6rem' }}
+                >
+                  <Compass size={18} />
+                  <span>ENTER 3D GANESH POL EXPLORATION</span>
+                </button>
+              )}
+
               <button
-                className="btn-heritage-primary btn-large-cta pulse-gold"
+                className={activeInspectionClue.type === 'mirror' || activeInspectionClue.type === 'water' || activeInspectionClue.type === 'craft' ? 'btn-heritage-secondary' : 'btn-heritage-primary btn-large-cta pulse-gold'}
                 onClick={() => handleCollectClue(activeInspectionClue.id)}
                 id="collect-2d-clue-btn"
               >
@@ -1320,6 +1515,78 @@ export default function LocationExploreScreen({
                 <span>Close Archive</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* 7. DEDICATED SHEESH MAHAL INTERACTIVE EXPLORATION SUB-SCREEN          */}
+      {/* ===================================================================== */}
+      {showSheeshMahalExplore && (
+        <div 
+          className="modal-overlay sheesh-fullscreen-modal-overlay" 
+          role="dialog" 
+          aria-modal="true" 
+          aria-label="Sheesh Mahal Interactive 3D Exploration"
+          style={{ zIndex: 120, padding: 0 }}
+        >
+          <div style={{ width: '100%', maxWidth: '1200px', height: 'clamp(620px, 88vh, 800px)', padding: '0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <SheeshMahalExploreScreen
+              location={location}
+              playerStats={playerStats}
+              onCompleteSheeshMahal={handleCompleteSheeshMahal}
+              onReturnToFort={() => setShowSheeshMahalExplore(false)}
+              onOpenCodex={onOpenCodex}
+              onClaimExplorationXP={onClaimExplorationXP}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* 8. DEDICATED MAOTA LAKE INTERACTIVE EXPLORATION SUB-SCREEN            */}
+      {/* ===================================================================== */}
+      {showMaotaLakeExplore && (
+        <div 
+          className="modal-overlay sheesh-fullscreen-modal-overlay" 
+          role="dialog" 
+          aria-modal="true" 
+          aria-label="Maota Lake Interactive 3D Exploration"
+          style={{ zIndex: 120, padding: 0 }}
+        >
+          <div style={{ width: '100%', maxWidth: '1200px', height: 'clamp(620px, 88vh, 800px)', padding: '0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <MaotaLakeExploreScreen
+              location={location}
+              playerStats={playerStats}
+              onCompleteMaotaLake={handleCompleteMaotaLake}
+              onReturnToFort={() => setShowMaotaLakeExplore(false)}
+              onOpenCodex={onOpenCodex}
+              onClaimExplorationXP={onClaimExplorationXP}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* 9. DEDICATED GANESH POL INTERACTIVE EXPLORATION SUB-SCREEN            */}
+      {/* ===================================================================== */}
+      {showGaneshPolExplore && (
+        <div 
+          className="modal-overlay sheesh-fullscreen-modal-overlay" 
+          role="dialog" 
+          aria-modal="true" 
+          aria-label="Ganesh Pol Interactive 3D Exploration"
+          style={{ zIndex: 120, padding: 0 }}
+        >
+          <div style={{ width: '100%', maxWidth: '1200px', height: 'clamp(620px, 88vh, 800px)', padding: '0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <GaneshPolExploreScreen
+              location={location}
+              playerStats={playerStats}
+              onCompleteGaneshPol={handleCompleteGaneshPol}
+              onReturnToFort={() => setShowGaneshPolExplore(false)}
+              onOpenCodex={onOpenCodex}
+              onClaimExplorationXP={onClaimExplorationXP}
+            />
           </div>
         </div>
       )}
