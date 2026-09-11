@@ -78,7 +78,9 @@ export default function MehrangarhExploreScreen({
   });
 
   const keysPressed = useRef({});
-  const joystickVector = useRef({ x: 0, y: 0 });
+  const joystickTouchRef = useRef(null);
+  const [joystickVector, setJoystickVector] = useState({ x: 0, y: 0, active: false });
+  const joystickVectorRef = useRef({ x: 0, y: 0, active: false });
   const isInteractingModalOpen = useRef(false);
 
   useEffect(() => {
@@ -137,13 +139,50 @@ export default function MehrangarhExploreScreen({
     };
   }, [nearbyFragment, activeInspectionFragment]);
 
-  // Mobile Virtual Joystick Handlers
-  const handleJoystickMove = (vector) => {
-    joystickVector.current = vector;
+  // Touch Virtual Joystick Handlers (Reusing Amer Fort Implementation)
+  const handleJoystickTouchStart = (e) => {
+    if (isInteractingModalOpen.current) return;
+    if (e.cancelable && e.type.startsWith('touch')) {
+      e.preventDefault();
+    }
+    const touch = e.touches ? e.touches[0] : e;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    joystickTouchRef.current = { centerX, centerY, radius: rect.width / 2 };
+
+    const dx = touch.clientX - centerX;
+    const dy = touch.clientY - centerY;
+    const dist = Math.hypot(dx, dy);
+    const maxR = rect.width / 2;
+    const normX = dx / (dist > maxR ? dist : maxR);
+    const normY = dy / (dist > maxR ? dist : maxR);
+
+    joystickVectorRef.current = { x: normX, y: normY, active: true };
+    setJoystickVector({ x: normX, y: normY, active: true });
   };
 
-  const handleJoystickEnd = () => {
-    joystickVector.current = { x: 0, y: 0 };
+  const handleJoystickTouchMove = (e) => {
+    if (!joystickTouchRef.current || isInteractingModalOpen.current) return;
+    if (e.cancelable && e.type.startsWith('touch')) {
+      e.preventDefault();
+    }
+    const touch = e.touches ? e.touches[0] : e;
+    const { centerX, centerY, radius } = joystickTouchRef.current;
+    const dx = touch.clientX - centerX;
+    const dy = touch.clientY - centerY;
+    const dist = Math.hypot(dx, dy);
+    const normX = dx / (dist > radius ? dist : radius);
+    const normY = dy / (dist > radius ? dist : radius);
+
+    joystickVectorRef.current = { x: normX, y: normY, active: true };
+    setJoystickVector({ x: normX, y: normY, active: true });
+  };
+
+  const handleJoystickTouchEnd = () => {
+    joystickTouchRef.current = null;
+    joystickVectorRef.current = { x: 0, y: 0, active: false };
+    setJoystickVector({ x: 0, y: 0, active: false });
   };
 
   // Preloaded Environment Image Asset (Authentic Mehrangarh Home Visual)
@@ -189,9 +228,9 @@ export default function MehrangarhExploreScreen({
         if (keysPressed.current['a'] || keysPressed.current['arrowleft']) dx -= 1;
         if (keysPressed.current['d'] || keysPressed.current['arrowright']) dx += 1;
 
-        if (joystickVector.current.x !== 0 || joystickVector.current.y !== 0) {
-          dx = joystickVector.current.x;
-          dy = joystickVector.current.y;
+        if (joystickVectorRef.current.active) {
+          dx = joystickVectorRef.current.x;
+          dy = joystickVectorRef.current.y;
         }
       }
 
@@ -713,38 +752,38 @@ export default function MehrangarhExploreScreen({
         </div>
 
         {/* =================================================================== */}
-        {/* 8. MOBILE VIRTUAL JOYSTICK & CONTROLS                               */}
+        {/* 8. MOBILE VIRTUAL JOYSTICK & ACTION BUTTON (AMER FORT ADAPTATION)   */}
         {/* =================================================================== */}
-        <div className="mobile-touch-controls" style={{ position: 'absolute', bottom: '20px', left: '20px', zIndex: 30 }}>
-          <div 
-            className="virtual-joystick-area"
-            onTouchStart={(e) => {
-              const touch = e.touches[0];
-              const rect = e.currentTarget.getBoundingClientRect();
-              const centerX = rect.left + rect.width / 2;
-              const centerY = rect.top + rect.height / 2;
-              const dx = (touch.clientX - centerX) / (rect.width / 2);
-              const dy = (touch.clientY - centerY) / (rect.height / 2);
-              handleJoystickMove({ x: Math.max(-1, Math.min(1, dx)), y: Math.max(-1, Math.min(1, dy)) });
-            }}
-            onTouchMove={(e) => {
-              const touch = e.touches[0];
-              const rect = e.currentTarget.getBoundingClientRect();
-              const centerX = rect.left + rect.width / 2;
-              const centerY = rect.top + rect.height / 2;
-              const dx = (touch.clientX - centerX) / (rect.width / 2);
-              const dy = (touch.clientY - centerY) / (rect.height / 2);
-              handleJoystickMove({ x: Math.max(-1, Math.min(1, dx)), y: Math.max(-1, Math.min(1, dy)) });
-            }}
-            onTouchEnd={handleJoystickEnd}
-          >
-            <div className="joystick-knob"></div>
+        {/* Mobile Virtual Joystick (Lower-Left) */}
+        <div 
+          className="virtual-joystick-touchzone"
+          onTouchStart={handleJoystickTouchStart}
+          onTouchMove={handleJoystickTouchMove}
+          onTouchEnd={handleJoystickTouchEnd}
+          onTouchCancel={handleJoystickTouchEnd}
+          onPointerDown={handleJoystickTouchStart}
+          onPointerMove={handleJoystickTouchMove}
+          onPointerUp={handleJoystickTouchEnd}
+          onPointerCancel={handleJoystickTouchEnd}
+          aria-label="Virtual Joystick"
+        >
+          <div className="joystick-base-circle">
+            <div 
+              className="joystick-stick-knob"
+              style={{
+                transform: `translate(${joystickVector.x * 26}px, ${joystickVector.y * 26}px)`
+              }}
+            ></div>
           </div>
+          <span className="joystick-label">TOUCH TO MOVE</span>
+        </div>
 
-          {nearbyFragment && (
-            <button 
-              className="mobile-interact-btn pulse-gold"
-              onClick={() => {
+        {/* Mobile Action Button (Lower-Right) */}
+        <div className="mobile-action-touchzone">
+          <button
+            className={`btn-mobile-action-interact ${nearbyFragment ? 'interact-active pulse-gold' : 'interact-idle'}`}
+            onClick={() => {
+              if (nearbyFragment) {
                 sound.playChime();
                 if (nearbyFragment.id === 'frag_foundation') {
                   setShowSunCitadelExplore(true);
@@ -753,13 +792,14 @@ export default function MehrangarhExploreScreen({
                 } else {
                   setActiveInspectionFragment(nearbyFragment);
                 }
-              }}
-              style={{ position: 'absolute', bottom: '10px', right: '-120px' }}
-            >
-              <Hand size={22} />
-              <span>{(nearbyFragment.id === 'frag_foundation' || nearbyFragment.id === 'frag_gates') ? 'EXPLORE' : 'INTERACT'}</span>
-            </button>
-          )}
+              }
+            }}
+            disabled={!nearbyFragment}
+            aria-label="Interact Button"
+          >
+            <Hand size={22} />
+            <span>{(nearbyFragment?.id === 'frag_foundation' || nearbyFragment?.id === 'frag_gates') ? 'EXPLORE' : 'INTERACT'}</span>
+          </button>
         </div>
       </div>
 
