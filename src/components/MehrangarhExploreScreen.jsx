@@ -12,11 +12,13 @@ import {
   ArrowRight,
   Compass,
   DoorOpen,
-  Sun
+  Sun,
+  Waves
 } from 'lucide-react';
 import { sound } from '../data/soundEffects';
 import JaiPolExploreScreen from './JaiPolExploreScreen';
 import SunCitadelExploreScreen from './SunCitadelExploreScreen';
+import RanisarLakeExploreScreen from './RanisarLakeExploreScreen';
 
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1600;
@@ -53,6 +55,9 @@ export default function MehrangarhExploreScreen({
   // Dedicated Sun Citadel Interactive Exploration Screen State
   const [showSunCitadelExplore, setShowSunCitadelExplore] = useState(false);
 
+  // Dedicated Ranisar Lake Interactive Exploration Screen State
+  const [showRanisarLakeExplore, setShowRanisarLakeExplore] = useState(false);
+
   // Active Fragment Being Inspected
   const [activeInspectionFragment, setActiveInspectionFragment] = useState(null);
   const [nearbyFragment, setNearbyFragment] = useState(null);
@@ -84,8 +89,8 @@ export default function MehrangarhExploreScreen({
   const isInteractingModalOpen = useRef(false);
 
   useEffect(() => {
-    isInteractingModalOpen.current = !!(activeInspectionFragment || showIntroModal || showJaiPolExplore || showSunCitadelExplore);
-  }, [activeInspectionFragment, showIntroModal, showJaiPolExplore, showSunCitadelExplore]);
+    isInteractingModalOpen.current = !!(activeInspectionFragment || showIntroModal || showJaiPolExplore || showSunCitadelExplore || showRanisarLakeExplore);
+  }, [activeInspectionFragment, showIntroModal, showJaiPolExplore, showSunCitadelExplore, showRanisarLakeExplore]);
 
   // Audio Toggle
   const handleToggleSound = () => {
@@ -113,7 +118,7 @@ export default function MehrangarhExploreScreen({
 
       keysPressed.current[e.key.toLowerCase()] = true;
 
-      // E or Space to Interact with nearby fragment (directly opens Sun Citadel or Jai Pol)
+      // E or Space to Interact with nearby fragment (directly opens Sun Citadel, Jai Pol, or Ranisar Lake)
       if ((e.key === 'e' || e.key === 'E' || e.key === ' ') && nearbyFragment) {
         e.preventDefault();
         sound.playChime();
@@ -121,6 +126,8 @@ export default function MehrangarhExploreScreen({
           setShowSunCitadelExplore(true);
         } else if (nearbyFragment.id === 'frag_gates') {
           setShowJaiPolExplore(true);
+        } else if (nearbyFragment.id === 'frag_water') {
+          setShowRanisarLakeExplore(true);
         } else {
           setActiveInspectionFragment(nearbyFragment);
         }
@@ -455,6 +462,16 @@ export default function MehrangarhExploreScreen({
     }
   };
 
+  // Complete Ranisar Lake Feature Exploration Callback
+  const handleCompleteRanisarLake = ({ xpAward = 80 } = {}) => {
+    if (onClaimExplorationXP) {
+      onClaimExplorationXP(xpAward);
+    }
+    if (!discoveredIds.includes('frag_water')) {
+      setDiscoveredIds(prev => [...prev, 'frag_water']);
+    }
+  };
+
   const fragmentsCount = discoveredIds.length;
   const isAllFragmentsFound = fragmentsCount === 3;
 
@@ -525,6 +542,23 @@ export default function MehrangarhExploreScreen({
           >
             <DoorOpen size={16} />
             <span>Jai Pol</span>
+          </button>
+
+          <button 
+            className="btn-hud-round-action btn-monument-landmark-chip pulse-gold"
+            onClick={() => {
+              sound.playChime();
+              setShowRanisarLakeExplore(true);
+            }}
+            title="Explore Ranisar Lake"
+            style={{
+              background: 'rgba(56, 189, 248, 0.18)',
+              border: '1px solid rgba(56, 189, 248, 0.45)',
+              color: '#7dd3fc'
+            }}
+          >
+            <Waves size={16} />
+            <span>Ranisar Lake</span>
           </button>
 
           <div className="hud-player-stats-chip">
@@ -618,7 +652,9 @@ export default function MehrangarhExploreScreen({
                   ? 'SUN CITADEL (RAO JODHA)' 
                   : nearbyFragment.id === 'frag_gates' 
                     ? 'JAI POL GATEWAY' 
-                    : 'INSCRIPTION FRAGMENT'}
+                    : nearbyFragment.id === 'frag_water'
+                      ? 'RANISAR LAKE'
+                      : 'INSCRIPTION FRAGMENT'}
               </strong>
               <span>
                 Press <strong>E</strong> or Tap to {
@@ -626,7 +662,9 @@ export default function MehrangarhExploreScreen({
                     ? 'Explore Sun Citadel' 
                     : nearbyFragment.id === 'frag_gates' 
                       ? 'Explore Jai Pol' 
-                      : 'Inspect'
+                      : nearbyFragment.id === 'frag_water'
+                        ? 'Explore Ranisar Lake'
+                        : 'Inspect'
                 } ({nearbyFragment.shortTag})
               </span>
             </div>
@@ -638,12 +676,14 @@ export default function MehrangarhExploreScreen({
                   setShowSunCitadelExplore(true);
                 } else if (nearbyFragment.id === 'frag_gates') {
                   setShowJaiPolExplore(true);
+                } else if (nearbyFragment.id === 'frag_water') {
+                  setShowRanisarLakeExplore(true);
                 } else {
                   setActiveInspectionFragment(nearbyFragment);
                 }
               }}
             >
-              {(nearbyFragment.id === 'frag_foundation' || nearbyFragment.id === 'frag_gates') ? 'EXPLORE' : 'INTERACT'}
+              {(nearbyFragment.id === 'frag_foundation' || nearbyFragment.id === 'frag_gates' || nearbyFragment.id === 'frag_water') ? 'EXPLORE' : 'INTERACT'}
             </button>
           </div>
         )}
@@ -789,6 +829,8 @@ export default function MehrangarhExploreScreen({
                   setShowSunCitadelExplore(true);
                 } else if (nearbyFragment.id === 'frag_gates') {
                   setShowJaiPolExplore(true);
+                } else if (nearbyFragment.id === 'frag_water') {
+                  setShowRanisarLakeExplore(true);
                 } else {
                   setActiveInspectionFragment(nearbyFragment);
                 }
@@ -798,7 +840,7 @@ export default function MehrangarhExploreScreen({
             aria-label="Interact Button"
           >
             <Hand size={22} />
-            <span>{(nearbyFragment?.id === 'frag_foundation' || nearbyFragment?.id === 'frag_gates') ? 'EXPLORE' : 'INTERACT'}</span>
+            <span>{(nearbyFragment?.id === 'frag_foundation' || nearbyFragment?.id === 'frag_gates' || nearbyFragment?.id === 'frag_water') ? 'EXPLORE' : 'INTERACT'}</span>
           </button>
         </div>
       </div>
@@ -973,6 +1015,21 @@ export default function MehrangarhExploreScreen({
                 </button>
               )}
 
+              {activeInspectionFragment.id === 'frag_water' && (
+                <button
+                  className="btn-heritage-primary btn-large-cta pulse-gold"
+                  onClick={() => {
+                    sound.playChime();
+                    setActiveInspectionFragment(null);
+                    setShowRanisarLakeExplore(true);
+                  }}
+                  style={{ width: '100%', marginBottom: '0.2rem', background: 'linear-gradient(135deg, #0284c7, #0369a1)', borderColor: '#38bdf8' }}
+                >
+                  <Waves size={18} />
+                  <span>ENTER RANISAR LAKE EXPLORATION</span>
+                </button>
+              )}
+
               <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', gap: '0.75rem' }}>
                 <button 
                   className="btn-heritage-secondary"
@@ -1036,6 +1093,30 @@ export default function MehrangarhExploreScreen({
               playerStats={playerStats}
               onCompleteSunCitadel={handleCompleteSunCitadel}
               onReturnToFort={() => setShowSunCitadelExplore(false)}
+              onOpenCodex={onOpenCodex}
+              onClaimExplorationXP={onClaimExplorationXP}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* 13. DEDICATED RANISAR LAKE INTERACTIVE EXPLORATION SUB-SCREEN          */}
+      {/* ===================================================================== */}
+      {showRanisarLakeExplore && (
+        <div 
+          className="modal-overlay sheesh-fullscreen-modal-overlay" 
+          role="dialog" 
+          aria-modal="true" 
+          aria-label="Ranisar Lake Interactive Exploration"
+          style={{ zIndex: 120, padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <div style={{ width: '100%', maxWidth: '1240px', height: 'clamp(620px, 88vh, 800px)', padding: '0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
+            <RanisarLakeExploreScreen
+              location={location}
+              playerStats={playerStats}
+              onCompleteRanisarLake={handleCompleteRanisarLake}
+              onReturnToFort={() => setShowRanisarLakeExplore(false)}
               onOpenCodex={onOpenCodex}
               onClaimExplorationXP={onClaimExplorationXP}
             />
